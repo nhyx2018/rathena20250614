@@ -2050,9 +2050,11 @@
 #endif
 */
 
+/*
 #if PACKETVER_MAIN_NUM >= 20230802
 	parseable_packet( HEADER_CZ_QUEST_STATUS_REQ, -1, clif_parse_dull, 0 );
 #endif
+*/
 
 /*
 #if PACKETVER_MAIN_NUM >= 20230830
@@ -2089,6 +2091,10 @@
 
 #if PACKETVER_MAIN_NUM >= 20240502
 	parseable_packet( HEADER_CZ_GM_CHECKER, sizeof( struct PACKET_CZ_GM_CHECKER ), clif_parse_macro_checker, 0 );
+#endif
+
+#if PACKETVER_MAIN_NUM >= 20240516
+	parseable_packet(HEADER_CZ_QUEST_STATUS_REQ, -1, clif_parse_quest_status, 0);
 #endif
 
 #if PACKETVER_MAIN_NUM >= 20250122

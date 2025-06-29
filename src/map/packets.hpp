@@ -2142,11 +2142,13 @@ struct PACKET_ZC_MACRO_USER_REPORT_ACK
 } __attribute__((packed));
 DEFINE_PACKET_HEADER(ZC_MACRO_USER_REPORT_ACK, 0x0be3);
 
+/*
 struct PACKET_CZ_QUEST_STATUS_REQ{
 	int16 packetType;
 	int16 packetLength;
 } __attribute__((packed));
 DEFINE_PACKET_HEADER(CZ_QUEST_STATUS_REQ, 0xbf3);
+*/
 
 struct PACKET_CZ_MOVE_ITEM_TO_PERSONAL{
 	int16 packetType;
