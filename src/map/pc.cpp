@@ -15942,11 +15942,7 @@ void pc_set_costume_view(map_session_data *sd) {
 		sd->status.robe = id->look;
 
 	// Costumes check
-	if (!map_getmapflag(sd->m, MF_NOCOSTUME)
-#if PACKETVER_MAIN_NUM >= 20230906 || PACKETVER_RE_NUM >= 20230906
-		&& !sd->status.show_costumes
-#endif
-		) {
+	if (!map_getmapflag(sd->m, MF_NOCOSTUME)) {
 		if ((i = sd->equip_index[EQI_COSTUME_HEAD_LOW]) != -1 && (id = sd->inventory_data[i])) {
 			if (!(id->equip&(EQP_COSTUME_HEAD_MID|EQP_COSTUME_HEAD_TOP)))
 				sd->status.head_bottom = id->look;
