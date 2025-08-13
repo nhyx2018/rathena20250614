@@ -8295,7 +8295,7 @@ static int16 status_calc_aspd(struct block_list *bl, status_change *sc, bool fix
 			bonus -= sc->getSCE(SC_DONTFORGETME)->val2 / 10;
 #ifdef RENEWAL
 		if (sc->getSCE(SC_ENSEMBLEFATIGUE))
-			bonus -= sc->getSCE(SC_ENSEMBLEFATIGUE)->val2 / 10;
+			bonus -= sc->getSCE(SC_ENSEMBLEFATIGUE)->val2;
 #else
 		if (sc->getSCE(SC_LONGING))
 			bonus -= sc->getSCE(SC_LONGING)->val2 / 10;
@@ -9543,17 +9543,6 @@ status_change *status_get_sc(struct block_list *bl)
 		case BL_ELEM: return &((TBL_ELEM*)bl)->sc;
 	}
 	return nullptr;
-}
-
-/**
- * Initiate (memset) the status change data of an object
- * @param bl: Object whose sc data to memset [PC|MOB|HOM|MER|ELEM|NPC]
- */
-void status_change_init(struct block_list *bl)
-{
-	status_change *sc = status_get_sc(bl);
-	nullpo_retv(sc);
-	new (sc) status_change();
 }
 
 /*========================================== [Playtester]
@@ -11649,8 +11638,14 @@ static bool status_change_start_post_delay(block_list* src, block_list* bl, sc_t
 			val3 = 5*val1; // Def2 reduction
 			break;
 		case SC_PROVOKE:
-			val2 = 2+3*val1; // Atk increase
-			val3 = 5+5*val1; // Def reduction.
+			if (src->type != BL_PC && val1 == 10) {
+				val2 = 0; // 0% Atk increase
+				val3 = 100; // 100% Def reduction
+			}
+			else {
+				val2 = 2 + 3 * val1; // Atk increase
+				val3 = 5 + 5 * val1; // Def reduction
+			}
 			// val4 signals autoprovoke.
 			break;
 		case SC_AVOID:
@@ -14444,6 +14439,10 @@ TIMER_FUNC(status_change_timer){
 					sp*= 3;
 #endif
 				if (!status_charge(bl, 0, sp))
+					break;
+
+				// If no more SP left, the effect ends immediately
+				if (status->sp == 0)
 					break;
 			}
 			sc_timer_next(1000+tick);
