@@ -1047,7 +1047,7 @@ static void clif_set_unit_idle( struct block_list* bl, bool walking, send_target
 	int32 g_id = status_get_guild_id( bl );
 
 #if PACKETVER < 20091103
-	if( !pcdb_checkid( vd->class_ ) ){
+	if( !pcdb_checkid( vd->look[LOOK_BASE] ) ){
 		struct packet_idle_unit2 p;
 
 		p.PacketType = idle_unit2Type;
@@ -1059,22 +1059,22 @@ static void clif_set_unit_idle( struct block_list* bl, bool walking, send_target
 		p.bodyState = ( sc ) ? sc->opt1 : 0;
 		p.healthState = ( sc ) ? sc->opt2 : 0;
 		p.effectState = ( sc ) ? sc->option : 0;
-		p.job = vd->class_;
-		p.head = vd->hair_style;
-		p.weapon = vd->weapon;
-		p.accessory = vd->head_bottom;
-		if( bl->type == BL_NPC && vd->class_ == JT_GUILD_FLAG ){
+		p.job = vd->look[LOOK_BASE];
+		p.head = vd->look[LOOK_HAIR];
+		p.weapon = vd->look[LOOK_WEAPON];
+		p.accessory = vd->look[LOOK_HEAD_BOTTOM];
+		if( bl->type == BL_NPC && vd->look[LOOK_BASE] == JT_GUILD_FLAG ){
 			// The hell, why flags work like this?
 			p.shield = status_get_emblem_id( bl );
 			p.accessory2 = GetWord( g_id, 1 );
 			p.accessory3 = GetWord( g_id, 0 );
 		}else{
-			p.shield = vd->shield;
-			p.accessory2 = vd->head_top;
-			p.accessory3 = vd->head_mid;
+			p.shield = vd->look[LOOK_SHIELD];
+			p.accessory2 = vd->look[LOOK_HEAD_TOP];
+			p.accessory3 = vd->look[LOOK_HEAD_MID];
 		}
-		p.headpalette = vd->hair_color;
-		p.bodypalette = vd->cloth_color;
+		p.headpalette = vd->look[LOOK_HAIR_COLOR];
+		p.bodypalette = vd->look[LOOK_CLOTHES_COLOR];
 		p.headDir = ( sd )? sd->head_dir : 0;
 		p.GUID = g_id;
 		p.GEmblemVer = status_get_emblem_id( bl );
@@ -1212,7 +1212,7 @@ static void clif_spawn_unit( struct block_list *bl, enum send_target target ){
 	int32 g_id = status_get_guild_id( bl );
 
 #if PACKETVER < 20091103
-	if( !pcdb_checkid( vd->class_ ) ){
+	if( !pcdb_checkid( vd->look[LOOK_BASE] ) ){
 		struct packet_spawn_unit2 p;
 
 		p.PacketType = spawn_unit2Type;
@@ -1224,22 +1224,22 @@ static void clif_spawn_unit( struct block_list *bl, enum send_target target ){
 		p.bodyState = ( sc ) ? sc->opt1 : 0;
 		p.healthState = ( sc ) ? sc->opt2 : 0;
 		p.effectState = ( sc ) ? sc->option : 0;
-		p.head = vd->hair_style;
-		p.weapon = vd->weapon;
-		p.accessory = vd->head_bottom;
-		p.job = vd->class_;
-		if( bl->type == BL_NPC && vd->class_ == JT_GUILD_FLAG ){
+		p.head = vd->look[LOOK_HAIR];
+		p.weapon = vd->look[LOOK_WEAPON];
+		p.accessory = vd->look[LOOK_HEAD_BOTTOM];
+		p.job = vd->look[LOOK_BASE];
+		if( bl->type == BL_NPC && vd->look[LOOK_BASE] == JT_GUILD_FLAG ){
 			// The hell, why flags work like this?
 			p.shield = status_get_emblem_id( bl );
 			p.accessory2 = GetWord( g_id, 1 );
 			p.accessory3 = GetWord( g_id, 0 );
 		}else{
-			p.shield = vd->shield;
-			p.accessory2 = vd->head_top;
-			p.accessory3 = vd->head_mid;
+			p.shield = vd->look[LOOK_SHIELD];
+			p.accessory2 = vd->look[LOOK_HEAD_TOP];
+			p.accessory3 = vd->look[LOOK_HEAD_MID];
 		}
-		p.headpalette = vd->hair_color;
-		p.bodypalette = vd->cloth_color;
+		p.headpalette = vd->look[LOOK_HAIR_COLOR];
+		p.bodypalette = vd->look[LOOK_CLOTHES_COLOR];
 		p.headDir = ( sd ) ? sd->head_dir : 0;
 		p.isPKModeON = ( sd && sd->status.karma ) ? 1 : 0;
 		p.sex = vd->sex;
@@ -1643,7 +1643,7 @@ void clif_refresh_clothcolor( block_list& bl, enum send_target target, block_lis
 		return;
 	}
 
-	if( vd->cloth_color == 0 ){
+	if( vd->look[LOOK_CLOTHES_COLOR] == 0 ){
 		return;
 	}
 
@@ -1651,7 +1651,7 @@ void clif_refresh_clothcolor( block_list& bl, enum send_target target, block_lis
 		tbl = &bl;
 	}
 
-	clif_sprite_change( tbl, bl.id, LOOK_CLOTHES_COLOR, vd->cloth_color, 0, target );
+	clif_sprite_change( tbl, bl.id, LOOK_CLOTHES_COLOR, vd->look[LOOK_CLOTHES_COLOR], 0, target );
 #endif
 }
 
@@ -8543,7 +8543,7 @@ void clif_mvp_exp( map_session_data& sd, t_exp exp ){
 	PACKET_ZC_MVP_GETTING_SPECIAL_EXP packet{};
 
 	packet.packetType = HEADER_ZC_MVP_GETTING_SPECIAL_EXP;
-	packet.exp = std::min( static_cast<decltype(packet.exp)>( exp ), MAX_EXP );
+	packet.exp = static_cast<decltype(packet.exp)>(std::min(exp, MAX_EXP));
 
 	clif_send( &packet, sizeof( packet ), &sd, SELF );
 #endif
@@ -8622,27 +8622,32 @@ void clif_guild_belonginfo( map_session_data& sd ){
 ///     1 = online
 void clif_guild_memberlogin_notice(const struct mmo_guild &g,int32 idx,int32 flag)
 {
-	unsigned char buf[64];
 	map_session_data* sd;
+	
+	PACKET_ZC_UPDATE_CHARSTAT p = {};
 
-	WBUFW(buf, 0)=0x1f2;
-	WBUFL(buf, 2)=g.member[idx].account_id;
-	WBUFL(buf, 6)=g.member[idx].char_id;
-	WBUFL(buf,10)=flag;
+	p.packetType = HEADER_ZC_UPDATE_CHARSTAT;
+	p.aid = g.member[idx].account_id;
+	p.cid = g.member[idx].char_id;
+	p.status = flag;
 
 	if( ( sd = g.member[idx].sd ) != nullptr )
 	{
-		WBUFW(buf,14) = sd->status.sex;
-		WBUFW(buf,16) = sd->status.hair;
-		WBUFW(buf,18) = sd->status.hair_color;
-		clif_send(buf,packet_len(0x1f2),sd,GUILD_WOS);
+#if defined(PACKETVER)
+		p.gender = sd->status.sex;
+		p.hairStyle = sd->status.hair;
+		p.hairColor = sd->status.hair_color;
+#endif
+		clif_send(&p,sizeof(p),sd,GUILD_WOS);
 	}
 	else if( ( sd = guild_getavailablesd(g) ) != nullptr )
 	{
-		WBUFW(buf,14) = 0;
-		WBUFW(buf,16) = 0;
-		WBUFW(buf,18) = 0;
-		clif_send(buf,packet_len(0x1f2),sd,GUILD);
+#if defined(PACKETVER)
+		p.gender = 0;
+		p.hairStyle = 0;
+		p.hairColor = 0;
+#endif
+		clif_send(&p,sizeof(p),sd,GUILD);
 	}
 }
 
@@ -8910,20 +8915,27 @@ void clif_guild_positionchanged(const struct mmo_guild &g,int32 idx)
 	// FIXME: This packet is intended to update the clients after a
 	// commit of position info changes, not sending one packet per
 	// position.
-	map_session_data *sd;
-	unsigned char buf[128];
+	map_session_data* sd = guild_getavailablesd(g);
 
-	WBUFW(buf, 0)=0x174;
-	WBUFW(buf, 2)=44;  // packet len
-	// GUILD_REG_POSITION_INFO{
-	WBUFL(buf, 4)=idx;
-	WBUFL(buf, 8)=g.position[idx].mode;
-	WBUFL(buf,12)=idx;
-	WBUFL(buf,16)=g.position[idx].exp_mode;
-	safestrncpy(WBUFCP(buf,20),g.position[idx].name,NAME_LENGTH);
-	// }*
-	if( (sd=guild_getavailablesd(g))!=nullptr )
-		clif_send(buf,WBUFW(buf,2),sd,GUILD);
+	if( sd == nullptr ){
+		return;
+	}
+
+	PACKET_ZC_ACK_CHANGE_GUILD_POSITIONINFO* p = reinterpret_cast<PACKET_ZC_ACK_CHANGE_GUILD_POSITIONINFO*>( packet_buffer );
+
+	p->packetType = HEADER_ZC_ACK_CHANGE_GUILD_POSITIONINFO;
+	p->packetLength = sizeof(*p);
+
+	PACKET_ZC_ACK_CHANGE_GUILD_POSITIONINFO_sub& info = p->posInfo[0];
+
+	info.positionID = idx;
+	info.mode = g.position[idx].mode;
+	info.ranking = idx;
+	info.payRate = g.position[idx].exp_mode;
+	safestrncpy(info.posName, g.position[idx].name, sizeof(info.posName));
+	p->packetLength += static_cast<decltype(p->packetLength)>(sizeof(info));
+
+	clif_send(p,p->packetLength,sd,GUILD);
 }
 
 
@@ -8934,18 +8946,25 @@ void clif_guild_memberpositionchanged(const struct mmo_guild &g, int32 idx)
 	// FIXME: This packet is intended to update the clients after a
 	// commit of member position assignment changes, not sending one
 	// packet per position.
-	map_session_data *sd;
-	unsigned char buf[64];
+	map_session_data *sd = guild_getavailablesd(g);
 
-	WBUFW(buf, 0)=0x156;
-	WBUFW(buf, 2)=16;  // packet len
-	// MEMBER_POSITION_INFO{
-	WBUFL(buf, 4)=g.member[idx].account_id;
-	WBUFL(buf, 8)=g.member[idx].char_id;
-	WBUFL(buf,12)=g.member[idx].position;
-	// }*
-	if( (sd=guild_getavailablesd(g))!=nullptr )
-		clif_send(buf,WBUFW(buf,2),sd,GUILD);
+	if(sd == nullptr){
+		return;
+	}
+
+	PACKET_ZC_ACK_REQ_CHANGE_MEMBERS* p = reinterpret_cast<PACKET_ZC_ACK_REQ_CHANGE_MEMBERS*>( packet_buffer );
+
+	p->packetType = HEADER_ZC_ACK_REQ_CHANGE_MEMBERS;
+	p->packetLength = sizeof(*p);
+
+	PACKET_ZC_ACK_REQ_CHANGE_MEMBERS_sub& member = p->members[0];
+
+	member.accId = g.member[idx].account_id;
+	member.charId = g.member[idx].char_id;
+	member.positionID = g.member[idx].position;
+	p->packetLength += static_cast<decltype(p->packetLength)>(sizeof(member));
+
+	clif_send(p,p->packetLength,sd,GUILD);
 }
 
 
@@ -10959,6 +10978,11 @@ void clif_parse_LoadEndAck(int32 fd,map_session_data *sd)
 			}
 		}
 #endif
+
+#if PACKETVER >= 20230419
+		clif_configuration( sd, CONFIG_DISABLE_SHOWCOSTUMES, sd->status.disable_showcostumes );
+#endif
+
 		clif_reputation_list( *sd );
 
 		if (sd->guild && battle_config.guild_notice_changemap == 1){
@@ -11541,17 +11565,21 @@ void clif_parse_ChangeDir(int32 fd, map_session_data *sd)
 }
 
 
-/// Request to show an emotion (CZ_REQ_EMOTION).
-/// 00bf <type>.B
-/// type:
-///     @see enum emotion_type
+/// Request to show an emotion 
+/// 00bf <type>.B (CZ_REQ_EMOTION).
 void clif_parse_Emotion(int32 fd, map_session_data *sd){
 #if (PACKETVER_MAIN_NUM < 20230925)
 	if( sd == nullptr ){
 		return;
 	}
 
-	int32 emoticon = RFIFOB(fd,packet_db[RFIFOW(fd,0)].pos[0]);
+	const PACKET_CZ_REQ_EMOTION* p = reinterpret_cast<PACKET_CZ_REQ_EMOTION*>( RFIFOP( fd, 0 ) );
+
+	if( p->emotion_type >= ET_MAX ){
+		return;
+	}
+	
+	emotion_type emoticon = static_cast<emotion_type>( p->emotion_type );
 
 	if (battle_config.basic_skill_check == 0 || pc_checkskill(sd, NV_BASIC) >= 2 || pc_checkskill(sd, SU_BASIC_SKILL) >= 1) {
 		if (emoticon == ET_CHAT_PROHIBIT) {// prevent use of the mute emote [Valaris]
@@ -11579,10 +11607,10 @@ void clif_parse_Emotion(int32 fd, map_session_data *sd){
 		}
 
 		if(battle_config.client_reshuffle_dice && emoticon>=ET_DICE1 && emoticon<=ET_DICE6) {// re-roll dice
-			emoticon = rnd()%6+ET_DICE1;
+			emoticon = static_cast<emotion_type>( rnd()%6+ET_DICE1 );
 		}
 
-		clif_emotion( *sd, static_cast<emotion_type>( emoticon ) );
+		clif_emotion( *sd, emoticon );
 	} else
 		clif_skill_fail( *sd, 1, USESKILL_FAIL_LEVEL, 1 );
 #endif
@@ -14939,7 +14967,6 @@ void clif_parse_GM_Item_Monster(int32 fd, map_session_data *sd)
 		StringBuf_Init(&command);
 		StringBuf_Printf(&command, "%czeny %d", atcommand_symbol, INT_MAX);
 		is_atcommand(fd, sd, StringBuf_Value(&command), 1);
-		StringBuf_Destroy(&command);
 		return;
 	}
 
@@ -14957,7 +14984,6 @@ void clif_parse_GM_Item_Monster(int32 fd, map_session_data *sd)
 				StringBuf_Printf(&command, "%citem %u 20", atcommand_symbol, id->nameid);
 		}
 		is_atcommand(fd, sd, StringBuf_Value(&command), 1);
-		StringBuf_Destroy(&command);
 		return;
 	}
 
@@ -17726,8 +17752,8 @@ void clif_parse_configuration( int32 fd, map_session_data* sd ){
 
 			sd->hd->homunculus.autofeed = flag;
 			break;
-		case CONFIG_SHOW_COSTUMES:
-			sd->status.show_costumes = flag;
+		case CONFIG_DISABLE_SHOWCOSTUMES:
+			sd->status.disable_showcostumes = flag;
 			pc_set_costume_view(sd);
 			break;
 		default:
@@ -24915,6 +24941,120 @@ void clif_parse_enchantwindow_upgrade( int32 fd, map_session_data* sd ){
 #endif
 }
 
+void clif_parse_enchantwindow_upgrade_random(int32 fd, map_session_data *sd)
+{
+#if PACKETVER_MAIN_NUM >= 20230920
+	struct PACKET_CZ_REQUEST_RANDOM_UPGRADE_ENCHANT *p = (struct PACKET_CZ_REQUEST_RANDOM_UPGRADE_ENCHANT*)RFIFOP(fd, 0);
+
+	if( sd->state.item_enchant_index != p->clientLuaIndex ){
+		return;
+	}
+
+	uint16 index = server_index( p->index );
+
+	if( index >= MAX_INVENTORY ){
+		return;
+	}
+
+	if( sd->inventory_data[index] == nullptr ){
+		return;
+	}
+
+	struct item& selected_item = sd->inventory.u.items_inventory[index];
+	std::shared_ptr<s_item_enchant> enchant = item_enchant_db.find( p->clientLuaIndex );
+
+	if( enchant == nullptr ){
+		return;
+	}
+
+	if( !clif_parse_enchant_basecheck( selected_item, enchant ) ){
+		return;
+	}
+
+	uint16 slot = p->slot;
+
+	if( slot >= MAX_SLOTS ){
+		return;
+	}
+
+	if( slot < sd->inventory_data[index]->slots ){
+		return;
+	}
+
+	if( selected_item.card[slot] == 0 ){
+		return;
+	}
+
+	std::shared_ptr<s_item_enchant_slot> enchant_slot = util::umap_find( enchant->slots, slot );
+
+	if( enchant_slot == nullptr ){
+		return;
+	}
+
+	std::shared_ptr<s_item_enchant_random_upgrade> random_upgrades = util::umap_find( enchant_slot->random_upgrade.enchants, selected_item.card[slot] );
+
+	if( random_upgrades == nullptr ){
+		return;
+	}
+
+	if( sd->status.zeny < random_upgrades->zeny ){
+		return;
+	}
+
+	std::unordered_map<uint16, uint16> materials;
+
+	for( const auto& entry : random_upgrades->materials ){
+		int16 idx = pc_search_inventory( sd, entry.first );
+
+		if( idx < 0 ){
+			return;
+		}
+
+		if( sd->inventory.u.items_inventory[idx].amount < entry.second ){
+			return;
+		}
+
+		materials[idx] = entry.second;
+	}
+
+	if( pc_payzeny( sd, random_upgrades->zeny, LOG_TYPE_ENCHANT ) != 0 ){
+		return;
+	}
+
+	for( const auto& entry : materials ){
+		if( pc_delitem( sd, entry.first, entry.second, 0, 0, LOG_TYPE_ENCHANT )  != 0 ){
+			return;
+		}
+	}
+
+	// Log removal of item
+	log_pick_pc( sd, LOG_TYPE_ENCHANT, -1, &selected_item );
+
+	size_t maximum = 3 * random_upgrades->enchants.size();
+	bool enchanted = false;
+
+	for( int32 i = 0; i < maximum; i++ ){
+		std::shared_ptr<s_item_enchant_normal_sub> random_upgrade = util::umap_random( random_upgrades->enchants );
+
+		if( rnd_value( 0, 100000 ) < random_upgrade->chance ){
+			selected_item.card[slot] = random_upgrade->item_id;
+			enchanted = true;
+			break;
+		}
+	}
+
+	if( !enchanted ){
+		std::shared_ptr<s_item_enchant_normal_sub> random_upgrade = util::umap_random( random_upgrades->enchants );
+		selected_item.card[slot] = random_upgrade->item_id;
+	}
+
+	// Log retrieving the item again -> with the new enchant
+	log_pick_pc( sd, LOG_TYPE_ENCHANT, 1, &selected_item );
+
+	clif_enchantwindow_result( *sd, true, selected_item.card[slot] );
+#endif
+}
+
 void clif_parse_enchantwindow_reset( int32 fd, map_session_data* sd ){
 #if PACKETVER_MAIN_NUM >= 20201118 || PACKETVER_RE_NUM >= 20211103 || PACKETVER_ZERO_NUM >= 20221024
 	const PACKET_CZ_REQUEST_RESET_ENCHANT* p = reinterpret_cast<PACKET_CZ_REQUEST_RESET_ENCHANT*>( RFIFOP( fd, 0 ) );
@@ -25948,6 +26088,57 @@ void clif_macro_user_report_ack(map_session_data *sd, int32 status, const char* 
 	packet.status = status;
 	clif_send(&packet, sizeof(packet),sd,SELF);
 #endif
+}
+
+void clif_quest_status_ack(map_session_data* const sd, const PACKET_CZ_QUEST_STATUS_REQ_SUB* const QuestList, const uint16 QuestCount)
+{
+	uint8 Buffer[2048];
+	
+	const uint16 PacketLength = sizeof(PACKET_ZC_QUEST_STATUS_ACK) + QuestCount * sizeof(PACKET_ZC_QUEST_STATUS_ACK_SUB);
+	if (PacketLength > sizeof(Buffer))
+	{
+		// Buffer Overflow
+		return;
+	}
+
+	PACKET_ZC_QUEST_STATUS_ACK* const Packet = reinterpret_cast<PACKET_ZC_QUEST_STATUS_ACK*>(Buffer);
+	Packet->PacketType = HEADER_ZC_QUEST_STATUS_ACK;
+	Packet->PacketLength = PacketLength;
+
+	PACKET_ZC_QUEST_STATUS_ACK_SUB* const List = reinterpret_cast<PACKET_ZC_QUEST_STATUS_ACK_SUB*>(Buffer + sizeof(PACKET_ZC_QUEST_STATUS_ACK));
+	for (size_t Num = 0; Num < QuestCount; ++Num)
+	{
+		const uint32 QuestID = QuestList[Num].QuestID;
+		uint8 QuestStatus = Q_INACTIVE;
+
+		for (size_t QuestNum = 0; QuestNum < sd->num_quests; ++QuestNum)
+		{
+			if (QuestID == sd->quest_log[QuestNum].quest_id)
+			{
+				QuestStatus = (sd->quest_log[QuestNum].state == Q_COMPLETE);
+				break;
+			}
+		}
+
+		List[Num].QuestID = QuestID;
+		List[Num].QuestStatus = QuestStatus;
+
+	}
+
+	clif_send(Packet, Packet->PacketLength, sd, SELF);
+}
+
+void clif_parse_quest_status(const int32 fd, map_session_data* const sd)
+{
+	const PACKET_CZ_QUEST_STATUS_REQ* const Packet = reinterpret_cast<PACKET_CZ_QUEST_STATUS_REQ*>(RFIFOP(fd, 0));
+	if (Packet->PacketLength <= (sizeof(PACKET_CZ_QUEST_STATUS_REQ) + sizeof(PACKET_CZ_QUEST_STATUS_REQ_SUB)))
+	{
+		return;
+	}
+
+	const PACKET_CZ_QUEST_STATUS_REQ_SUB* const QuestList = reinterpret_cast<PACKET_CZ_QUEST_STATUS_REQ_SUB*>(RFIFOP(fd, sizeof(PACKET_CZ_QUEST_STATUS_REQ)));
+	const uint16 QuestCount = uint16(int16(Packet->PacketLength - sizeof(PACKET_CZ_QUEST_STATUS_REQ)) / sizeof(PACKET_CZ_QUEST_STATUS_REQ_SUB));
+	clif_quest_status_ack(sd, QuestList, QuestCount);
 }
 
 /*==========================================
